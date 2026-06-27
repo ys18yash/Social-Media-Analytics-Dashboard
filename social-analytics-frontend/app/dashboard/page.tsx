@@ -16,7 +16,7 @@ interface DashboardData {
   followersGrowth: { date: string; followers: number }[];
 }
 
-const [range, setRange] = useState("7");
+const [range, setRange] = useState("30");
 const [platform, setPlatform] = useState("all");
 
 export default function DashboardPage() {

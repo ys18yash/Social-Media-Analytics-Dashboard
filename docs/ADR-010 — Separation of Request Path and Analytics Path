@@ -1,0 +1,194 @@
+# ADR-010 — Separation of Request Path and Analytics Path
+
+**Status:** Accepted
+
+**Date:** 2026-XX-XX
+
+---
+
+# Context
+
+The central architectural challenge of analytics platforms is balancing two competing concerns:
+
+1. Users expect dashboards to respond immediately.
+2. Analytics computation becomes increasingly expensive as datasets grow.
+
+If request handling and analytics computation share the same execution path, increasing computational complexity directly increases user-facing latency.
+
+The platform required an architecture capable of optimizing these responsibilities independently.
+
+---
+
+# Decision
+
+The system separates execution into two independent paths:
+
+- **Request Path**
+- **Analytics Path**
+
+The Request Path is optimized for responsiveness.
+
+The Analytics Path is optimized for computation.
+
+Every major subsystem in the platform supports this separation.
+
+---
+
+# Architectural View
+
+```text
+                     Platform
+
+          ┌─────────────────────────┐
+          │                         │
+          ▼                         ▼
+
+    Request Path             Analytics Path
+
+ Express REST API          BullMQ Workers
+
+ Redis Cache              Metric Aggregation
+
+ Authentication           Cache Refresh
+
+ Dashboard APIs           Historical Processing
+
+ Low Latency              High Throughput
+```
+
+---
+
+# Request Path
+
+Responsibilities:
+
+- authentication
+- authorization
+- cache retrieval
+- API responses
+- dashboard delivery
+
+Design goal:
+
+**Minimize latency.**
+
+---
+
+# Analytics Path
+
+Responsibilities:
+
+- aggregation
+- background jobs
+- persistence
+- cache refresh
+- metric preparation
+
+Design goal:
+
+**Maximize throughput.**
+
+---
+
+# Rationale
+
+## Independent Optimization
+
+Both execution paths solve different problems.
+
+Optimizing one should never require changing the other.
+
+---
+
+## Predictable Performance
+
+Dashboard responsiveness remains stable even as analytical complexity increases.
+
+---
+
+## Operational Flexibility
+
+API instances and worker processes scale independently according to demand.
+
+Infrastructure resources are allocated where they provide the greatest benefit.
+
+---
+
+## Clear Architectural Boundaries
+
+Every subsystem has an obvious place within one of the two execution paths.
+
+This simplifies reasoning about system behavior.
+
+---
+
+# Consequences
+
+## Positive
+
+- Stable API latency
+- Independent scalability
+- Clear subsystem ownership
+- Better operational visibility
+- Simpler performance tuning
+- Easier future evolution
+
+---
+
+## Negative
+
+- Eventual consistency
+- Additional infrastructure
+- More complex deployment
+- Monitoring multiple execution paths
+
+These trade-offs are acceptable because the platform prioritizes predictable responsiveness over synchronous computation.
+
+---
+
+# Alternatives Considered
+
+## Single Execution Path
+
+Rejected.
+
+Analytics computation would directly compete with user requests for CPU and database resources.
+
+---
+
+## Fully Synchronous Architecture
+
+Rejected.
+
+Long-running analytical operations would reduce dashboard responsiveness and limit scalability.
+
+---
+
+## Client-Side Analytics
+
+Rejected.
+
+Business logic should remain centralized within backend services to ensure consistency and maintain security boundaries.
+
+---
+
+# Relationship to Other ADRs
+
+This ADR serves as the architectural foundation for the entire platform.
+
+It directly motivates:
+
+- ADR-001 — API-First Architecture
+- ADR-003 — PostgreSQL as the System of Record
+- ADR-004 — Redis Cache-Aside Strategy
+- ADR-005 — Queue-Based Background Processing
+- ADR-006 — Stateless Authentication
+- ADR-009 — Asynchronous Analytics Pipeline
+
+Every major architectural decision in the project exists to support the separation of these two execution paths.
+
+---
+
+# Summary
+
+The separation of the Request Path and Analytics Path is the defining architectural decision of the platform. User-facing requests remain lightweight and latency-sensitive, while computationally expensive analytics execute asynchronously through independent processing pipelines. This separation enables the system to scale each responsibility independently while maintaining a responsive user experience.
